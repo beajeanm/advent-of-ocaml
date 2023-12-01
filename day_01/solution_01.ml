@@ -28,7 +28,6 @@ open ContainersLabels
 
     OCaml supports multi-line strings by default. *)
 
-(* Paste sample data here *)
 let sample = {|
 1abc2
 pqr3stu8vwx
@@ -36,22 +35,32 @@ a1b2c3d4e5f
 treb7uchet
 |} |> String.trim
 
-(* If some parts of a solution is used in both Part_1 and Part_2 I place the
-   outside the modules *)
+let sample_2 =
+  {|
+two1nine
+eightwothree
+abcone2threexyz
+xtwone3four
+4nineeightseven2
+zoneight234
+7pqrstsixteen
+|}
+  |> String.trim
 
-(* These are my solutions to Day 1 from 2021: https://adventofcode.com/2021/day/1 *)
 module Part_1 = struct
   let is_number c = Char.(c >= '0' && c <= '9')
 
   let solve input =
     let lines = input |> String.lines in
-    let lines = List.map ~f:(String.filter ~f:is_number) lines in
-    List.map
-      ~f:(fun s ->
-        String.sub s ~pos:0 ~len:1
-        ^ String.sub s ~pos:(String.length s - 1) ~len:1)
-      lines
-    |> List.map ~f:int_of_string
+    let lines_of_digits = List.map ~f:(String.filter ~f:is_number) lines in
+    let first_and_last_digits =
+      List.map
+        ~f:(fun s ->
+          String.sub s ~pos:0 ~len:1
+          ^ String.sub s ~pos:(String.length s - 1) ~len:1)
+        lines_of_digits
+    in
+    List.map ~f:int_of_string first_and_last_digits
     |> List.fold_left ~f:Int.add ~init:0
 
   (* According to the description the expected value should be 7 given the
@@ -60,8 +69,83 @@ module Part_1 = struct
 end
 
 module Part_2 = struct
-  let solve input = 5
-  let%test "sample data" = Test.(run int (solve sample) ~expect:5)
+  let spelled_out_digits =
+    [
+      ("one", "1");
+      ("two", "2");
+      ("three", "3");
+      ("four", "4");
+      ("five", "5");
+      ("six", "6");
+      ("seven", "7");
+      ("eight", "8");
+      ("nine", "9");
+    ]
+
+  let digits_regexp =
+    [
+      "one";
+      "two";
+      "three";
+      "four";
+      "five";
+      "six";
+      "seven";
+      "eight";
+      "nine";
+      "1";
+      "2";
+      "3";
+      "4";
+      "5";
+      "6";
+      "7";
+      "8";
+      "9";
+    ]
+    |> List.map ~f:Re.str |> Re.alt |> Re.compile
+
+  let extract_digits input =
+    let open Re in
+    let len = String.length input in
+    let rec aux pos acc =
+      let open Option.Infix in
+      let next_match = exec_opt ~pos digits_regexp input in
+      let has_match =
+        Option.get_or ~default:false
+        @@ Option.map (fun group -> Group.test group 0) next_match
+      in
+      if has_match then
+        let next_match = Option.get_exn_or "not possible" next_match in
+        let digit = Group.get next_match 0 in
+        let pos = Group.start next_match 0 + 1 in
+        if pos = len then digit :: acc else aux pos (digit :: acc)
+      else acc
+    in
+    List.rev @@ aux 0 []
+
+  let replace_spelled_out_digits input =
+    let aux input (spelled_out, digit) =
+      String.replace ~which:`All ~sub:spelled_out ~by:digit input
+    in
+    List.fold_left ~f:aux ~init:input spelled_out_digits
+
+  let solve input =
+    let lines = input |> String.lines in
+    let lines_of_digits = List.map ~f:extract_digits lines in
+    let first_and_last_digits =
+      List.map ~f:(fun l -> (List.hd l, List.hd @@ List.rev l)) lines_of_digits
+    in
+    let numbers =
+      List.map
+        ~f:(fun (first, last) ->
+          replace_spelled_out_digits first ^ replace_spelled_out_digits last)
+        first_and_last_digits
+    in
+    List.map ~f:int_of_string numbers |> List.fold_left ~f:Int.add ~init:0
+
+  let%test "sample data" = Test.(run int (solve sample_2) ~expect:281)
+  let%test "tricky input" = Test.(run int (solve "eighthree") ~expect:83)
 end
 
 let run_1 () =
@@ -73,6 +157,6 @@ let run_2 () =
   (* When you are done, uncomment this to run the "real thing" *)
   (* Submit the result *)
   (* run `dune promote` *)
-  (* Run.solve_int (module Part_2); *)
+  Run.solve_int (module Part_2);
   (* Run.solve_string (module Part_2); *)
   ()
