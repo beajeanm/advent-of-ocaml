@@ -69,19 +69,6 @@ module Part_1 = struct
 end
 
 module Part_2 = struct
-  let spelled_out_digits =
-    [
-      ("one", "1");
-      ("two", "2");
-      ("three", "3");
-      ("four", "4");
-      ("five", "5");
-      ("six", "6");
-      ("seven", "7");
-      ("eight", "8");
-      ("nine", "9");
-    ]
-
   let digits_regexp =
     [
       "one";
@@ -105,12 +92,14 @@ module Part_2 = struct
     ]
     |> List.map ~f:Re.str |> Re.alt |> Re.compile
 
+  (* Numbers can overlap, e.g. eighthree should be parsed as 83. So we need to parse the string one digit at a time,
+     and only progress of 1 char when we have a match.*)
   let extract_digits input =
-    let open Re in
+    let module Group = Re.Group in
     let len = String.length input in
     let rec aux pos acc =
       let open Option.Infix in
-      let next_match = exec_opt ~pos digits_regexp input in
+      let next_match = Re.exec_opt ~pos digits_regexp input in
       let has_match =
         Option.get_or ~default:false
         @@ Option.map (fun group -> Group.test group 0) next_match
@@ -124,7 +113,21 @@ module Part_2 = struct
     in
     List.rev @@ aux 0 []
 
-  let replace_spelled_out_digits input =
+  let spelled_out_digits =
+    [
+      ("one", "1");
+      ("two", "2");
+      ("three", "3");
+      ("four", "4");
+      ("five", "5");
+      ("six", "6");
+      ("seven", "7");
+      ("eight", "8");
+      ("nine", "9");
+    ]
+
+  (* Replace the spelled out digits with the actual digit. *)
+  let unspell input =
     let aux input (spelled_out, digit) =
       String.replace ~which:`All ~sub:spelled_out ~by:digit input
     in
@@ -132,15 +135,14 @@ module Part_2 = struct
 
   let solve input =
     let lines = input |> String.lines in
-    let lines_of_digits = List.map ~f:extract_digits lines in
-    let first_and_last_digits =
-      List.map ~f:(fun l -> (List.hd l, List.hd @@ List.rev l)) lines_of_digits
+    let digits_per_line = List.map ~f:extract_digits lines in
+    let first_and_last_per_line =
+      List.map ~f:(fun l -> (List.hd l, List.hd @@ List.rev l)) digits_per_line
     in
     let numbers =
       List.map
-        ~f:(fun (first, last) ->
-          replace_spelled_out_digits first ^ replace_spelled_out_digits last)
-        first_and_last_digits
+        ~f:(fun (first, last) -> unspell first ^ unspell last)
+        first_and_last_per_line
     in
     List.map ~f:int_of_string numbers |> List.fold_left ~f:Int.add ~init:0
 
@@ -150,13 +152,8 @@ end
 
 let run_1 () =
   Run.solve_int (module Part_1);
-  (* Run.solve_string (module Part_1); *)
   ()
 
 let run_2 () =
-  (* When you are done, uncomment this to run the "real thing" *)
-  (* Submit the result *)
-  (* run `dune promote` *)
   Run.solve_int (module Part_2);
-  (* Run.solve_string (module Part_2); *)
   ()
