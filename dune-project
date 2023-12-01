@@ -1,10 +1,12 @@
 (lang dune 3.11)
 
 ; dune-project is the configuration file for the project
+
 (name aoc)
 
 ; Let Dune generate our `aoc.opam` file to let
 ; opam know what what packages to install in our switch.
+
 (generate_opam_files true)
 
 (authors "p1xelHer0")
@@ -16,6 +18,8 @@
 (bug_reports "https://github.com/p1xelHer0/advent-of-ocaml/issues")
 
 (license UNLICENSE)
+
+(implicit_transitive_deps false)
 
 (package
  (name aoc)
@@ -44,6 +48,9 @@
   ; Functional Priority Search Queues
   (psq
    (>= 0.2.1))
+  ; Nicer regular expression
+  (re
+   (>= 1.11.0))
   ; Mainly for ppx_deriving.show
   ; show derives a function that inspects a value; that is, pretty-prints it with OCaml syntax
   (ppx_deriving

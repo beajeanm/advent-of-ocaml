@@ -14,7 +14,7 @@
  (modules solution_01)
  ; Define the libraries we want to be able to use within the module
  ; Use `open Library` to use them
- (libraries aoc angstrom containers oseq)
+ (libraries aoc angstrom containers oseq re)
  ; This module contains inline tests
  (inline_tests)
  ; This module contains PPX:es

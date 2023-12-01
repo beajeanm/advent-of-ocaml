@@ -1,32 +1,6 @@
 (* Hello, welcome to Advent of Code and OCaml! *)
 
 open ContainersLabels
-(* open Containers *)
-
-(* I prefer labeled arguments.
-
-   - This is `fold_left` with labeled argumnets, ~f and ~init are labels.
-     `List.fold_left ~f:( + ) ~init:0`
-     `List.fold_left ~init:0 ~f:( + )`
-
-   - Labeled arguments also have "punning", meaning that if `f` is defined
-     `let f = ( + )`
-     then we can omit the `:` part completly
-     `List.fold_left ~init:0` ~f`
-
-
-   - This is `fold_left` without labeled arguments, order matters, like you
-     are probably used to
-     `List.fold_left ( + ) 0`
-
-   See: https://ocaml.org/docs/labels
-
-   If you don't want this, open Containers instead of ContainersLabels. *)
-
-(* Advent of Code usually provides of with some smaller examples.
-   I usually do inline testing to verify that my solution matches the examples.
-
-    OCaml supports multi-line strings by default. *)
 
 let sample = {|
 1abc2
