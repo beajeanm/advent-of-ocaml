@@ -30,16 +30,10 @@ open ContainersLabels
 
 (* Paste sample data here *)
 let sample = {|
-199
-200
-208
-210
-200
-207
-240
-269
-260
-263
+1abc2
+pqr3stu8vwx
+a1b2c3d4e5f
+treb7uchet
 |} |> String.trim
 
 (* If some parts of a solution is used in both Part_1 and Part_2 I place the
@@ -47,43 +41,26 @@ let sample = {|
 
 (* These are my solutions to Day 1 from 2021: https://adventofcode.com/2021/day/1 *)
 module Part_1 = struct
-  let rec solve_aux accu l =
-    match l with
-    | [] | [ _ ] -> accu
-    | x1 :: x2 :: tl ->
-        let accu' = if x2 > x1 then succ accu else accu in
-        solve_aux accu' (x2 :: tl)
+  let is_number c = Char.(c >= '0' && c <= '9')
 
-  (* This needs to be a
-     `string -> int`
-     or
-     `string -> string*)
   let solve input =
-    let parsed = input |> String.lines |> List.map ~f:int_of_string in
-    solve_aux 0 parsed
+    let lines = input |> String.lines in
+    let lines = List.map ~f:(String.filter ~f:is_number) lines in
+    List.map
+      ~f:(fun s ->
+        String.sub s ~pos:0 ~len:1
+        ^ String.sub s ~pos:(String.length s - 1) ~len:1)
+      lines
+    |> List.map ~f:int_of_string
+    |> List.fold_left ~f:Int.add ~init:0
 
   (* According to the description the expected value should be 7 given the
      sample data. *)
-  let%test "sample data" = Test.(run int (solve sample) ~expect:7)
+  let%test "sample data" = Test.(run int (solve sample) ~expect:142)
 end
 
 module Part_2 = struct
-  let rec solve_aux accu l =
-    match l with
-    | x1 :: x2 :: x3 :: x4 :: tl ->
-        let sliding_window_1 = Util.sum [ x1; x2; x3 ] in
-        let sliding_window_2 = Util.sum [ x2; x3; x4 ] in
-        let accu' =
-          if sliding_window_2 > sliding_window_1 then succ accu else accu
-        in
-        solve_aux accu' (x2 :: x3 :: x4 :: tl)
-    | _ -> accu
-
-  let solve input =
-    (input |> String.lines |> List.map ~f:int_of_string |> solve_aux 0)
-    + 1 (* Remove the + 1 part to fix the test below. *)
-
-  (* Set expect result of the sample data here: 5 *)
+  let solve input = 5
   let%test "sample data" = Test.(run int (solve sample) ~expect:5)
 end
 
