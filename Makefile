@@ -62,4 +62,4 @@ reset: ## Remove local opam switch
 	rm -rf ./_opam
 
 day%: ## Run a day given the input - make day01
-	dune test ./day_$* -w
+	dune test ./day_$* -w --profile=release
