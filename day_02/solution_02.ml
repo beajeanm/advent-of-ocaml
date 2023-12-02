@@ -1,8 +1,9 @@
 open ContainersLabels
 
-type die = Blue of int | Red of int | Green of int
-type subset = { dice : die list }
+type colour_dice = Blue of int | Red of int | Green of int
+type subset = { handfull : colour_dice list }
 type game = int * subset list
+type bag = { blue : int; red : int; green : int }
 
 module Parser = struct
   open Angstrom
@@ -27,8 +28,8 @@ module Parser = struct
     | `Green -> Green count
 
   let set =
-    let+ dice = sep_by (char ',' *> ws) die_count in
-    { dice }
+    let+ handfull = sep_by (char ',' *> ws) die_count in
+    { handfull }
 
   let game =
     let* game_id = game_id <* ws in
@@ -47,26 +48,25 @@ Game 5: 6 red, 1 blue, 3 green; 2 blue, 1 red, 2 green
   |> String.trim
 
 module Part_1 = struct
-  let possible_die_count ~blue ~red ~green = function
-    | Blue c -> c <= blue
-    | Red c -> c <= red
-    | Green c -> c <= green
+  let possible_die_count bag = function
+    | Blue c -> c <= bag.blue
+    | Red c -> c <= bag.red
+    | Green c -> c <= bag.green
 
-  let possible_game ~blue ~red ~green (_, sets) =
+  let possible_game bag (_, sets) =
     let possible_sets subset =
-      List.for_all ~f:(possible_die_count ~blue ~red ~green) subset.dice
+      List.for_all ~f:(possible_die_count bag) subset.handfull
     in
     List.for_all ~f:possible_sets sets
 
   let solve input =
+    let bag = { blue = 14; red = 12; green = 13 } in
     let lines = String.lines input in
     let games =
       List.map ~f:(Angstrom.parse_string ~consume:All Parser.game) lines
       |> List.map ~f:Result.get_exn
     in
-    let possible_games =
-      List.filter ~f:(possible_game ~blue:14 ~red:12 ~green:13) games
-    in
+    let possible_games = List.filter ~f:(possible_game bag) games in
     let possible_game_ids = List.map ~f:fst possible_games in
     List.fold_left ~f:Int.add ~init:0 possible_game_ids
 
@@ -74,8 +74,6 @@ module Part_1 = struct
 end
 
 module Part_2 = struct
-  type min_bag = { blue : int; red : int; green : int }
-
   let combine bag1 bag2 =
     {
       blue = max bag1.blue bag2.blue;
@@ -83,17 +81,18 @@ module Part_2 = struct
       green = max bag1.green bag2.green;
     }
 
-  let min_bag_die = function
+  let bag_from_die = function
     | Blue c -> { blue = c; red = 0; green = 0 }
     | Red c -> { blue = 0; red = c; green = 0 }
     | Green c -> { blue = 0; red = 0; green = c }
 
-  let zero = { blue = 0; red = 0; green = 0 }
+  let empty_bag = { blue = 0; red = 0; green = 0 }
 
-  let min_bag_subset subset =
-    List.map ~f:min_bag_die subset.dice |> List.fold_left ~f:combine ~init:zero
+  let bag_of_subset subset =
+    List.map ~f:bag_from_die subset.handfull
+    |> List.fold_left ~f:combine ~init:empty_bag
 
-  let power bag = bag.blue * bag.red * bag.green
+  let power_of_bag bag = bag.blue * bag.red * bag.green
 
   let solve input =
     let lines = String.lines input in
@@ -101,11 +100,11 @@ module Part_2 = struct
       List.map ~f:(Angstrom.parse_string ~consume:All Parser.game) lines
       |> List.map ~f:Result.get_exn
     in
-    let bags =
-      List.map ~f:(fun (_, subsets) -> List.map ~f:min_bag_subset subsets) games
-      |> List.map ~f:(List.fold_left ~f:combine ~init:zero)
+    let required_bags =
+      List.map ~f:(fun (_, subsets) -> List.map ~f:bag_of_subset subsets) games
+      |> List.map ~f:(List.fold_left ~f:combine ~init:empty_bag)
     in
-    let powers = List.map ~f:power bags in
+    let powers = List.map ~f:power_of_bag required_bags in
     List.fold_left ~f:Int.add ~init:0 powers
 
   let%test "sample data" = Test.(run int (solve sample) ~expect:2286)
