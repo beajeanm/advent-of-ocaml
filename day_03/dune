@@ -1,7 +1,7 @@
 (library
  (name solution_03)
  (modules solution_03)
- (libraries aoc angstrom containers oseq)
+ (libraries aoc angstrom containers oseq re iter)
  (inline_tests)
  (preprocess
   (pps
