@@ -15,65 +15,56 @@ let sample =
 |}
   |> String.trim
 
-let number = Re.(compile @@ rep1 digit)
+let number_re = Re.(compile @@ rep1 digit)
+let star_re = Re.(compile @@ char '*')
+let symbol_re = Re.(compile @@ diff any (alt [ char '.'; digit ]))
+
+let is_neighbour (group_row, group) (row, col) =
+  let ( == ) = Int.equal in
+  let start = Re.Group.start group 0 in
+  let stop = Re.Group.stop group 0 in
+  (row == group_row && col == start - 1)
+  || (row == group_row && col == stop)
+  || (row == group_row - 1 && col >= start - 1 && col <= stop)
+  || (row == group_row + 1 && col >= start - 1 && col <= stop)
+
+let has_neighbours coordinates element =
+  Seq.filter (fun point -> is_neighbour element point) coordinates
+  |> Seq.is_empty |> not
 
 module Part_1 = struct
-  let line_numbers line = Re.all number line
-  let is_symbol c = not Char.(equal '.' c || ('0' <= c && c <= '9'))
-
-  let is_valid lines (line_index, number) =
-    let lines = Array.of_list lines in
-    let line_length = String.length lines.(0) in
-    let num_start = Re.Group.start number 0 in
-    let num_end = Re.Group.stop number 0 in
-    let start_index = Int.max 0 (num_start - 1) in
-    let end_index = Int.min (line_length - 1) num_end in
-    let has_symbol_in_range line start_index end_index =
-      Iter.(start_index -- end_index)
-      |> Iter.map (fun i -> String.get line i)
-      |> Iter.filter is_symbol |> Iter.is_empty
-    in
-    let has_symbol_above =
-      if Int.equal line_index 0 then false
-      else
-        let line_above = lines.(line_index - 1) in
-        not (has_symbol_in_range line_above start_index end_index)
-    in
-    let has_symbol_next =
-      is_symbol (String.get lines.(line_index) start_index)
-      || is_symbol (String.get lines.(line_index) end_index)
-    in
-    let has_symbol_below =
-      if Int.equal line_index (Array.length lines - 1) then false
-      else
-        let line_below = lines.(line_index + 1) in
-        not (has_symbol_in_range line_below start_index end_index)
-    in
-    has_symbol_above || has_symbol_next || has_symbol_below
-
   let solve input =
     let lines = String.lines input in
-    let line_numbers =
+    let numbers =
       List.flat_map_i
-        ~f:(fun i line -> List.map ~f:(fun g -> (i, g)) (line_numbers line))
+        ~f:(fun row line ->
+          Re.all number_re line |> List.map ~f:(fun num -> (row, num)))
         lines
     in
-    let valid_groups =
-      List.filter ~f:(fun num -> is_valid lines num) line_numbers
+    let symbols =
+      List.flat_map_i
+        ~f:(fun row line ->
+          Re.all symbol_re line |> List.map ~f:(fun group -> (row, group)))
+        lines
     in
-    let numbers =
-      List.map ~f:snd valid_groups
-      |> List.map ~f:(fun g -> Re.Group.get g 0)
+    let symbol_coordinates =
+      List.map ~f:(fun (row, group) -> (row, Re.Group.start group 0)) symbols
+      |> Seq.of_list
+    in
+    let valid_numbers =
+      List.filter ~f:(has_neighbours symbol_coordinates) numbers
+      |> List.map ~f:snd
+      |> List.map ~f:(fun group -> Re.Group.get group 0)
       |> List.map ~f:int_of_string
     in
-    List.fold_left ~f:Int.add ~init:0 numbers
+    List.fold_left ~f:Int.add ~init:0 valid_numbers
 
   let%test "sample data" = Test.(run int (solve sample) ~expect:4361)
 end
 
 module Part_2 = struct
   let solve input = 0
-  let%test "sample data" = Test.(run int (solve sample) ~expect:0)
+  (* let%test "sample data" = Test.(run int (solve sample) ~expect:467835) *)
 end
 
 let run_1 () =
