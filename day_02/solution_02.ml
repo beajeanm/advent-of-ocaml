@@ -6,11 +6,8 @@ type bag = { blue : int; red : int; green : int }
 
 module Parser = struct
   open Angstrom
+  open Util.Parser
 
-  let is_ws = function ' ' | '\t' -> true | _ -> false
-  let ws = skip_while is_ws
-  let is_int = function '0' .. '9' -> true | _ -> false
-  let integer = take_while1 is_int >>| int_of_string
   let game_id = string "Game " *> integer <* char ':'
 
   let die =
