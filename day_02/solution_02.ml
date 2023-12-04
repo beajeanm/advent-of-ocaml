@@ -2,7 +2,6 @@ open ContainersLabels
 
 type colour_dice = Blue of int | Red of int | Green of int
 type subset = { handfull : colour_dice list }
-type game = int * subset list
 type bag = { blue : int; red : int; green : int }
 
 module Parser = struct
@@ -68,7 +67,7 @@ module Part_1 = struct
     in
     let possible_games = List.filter ~f:(possible_game bag) games in
     let possible_game_ids = List.map ~f:fst possible_games in
-    List.fold_left ~f:Int.add ~init:0 possible_game_ids
+    Util.sum possible_game_ids
 
   let%test "sample data" = Test.(run int (solve sample) ~expect:8)
 end
@@ -105,7 +104,7 @@ module Part_2 = struct
       |> List.map ~f:(List.fold_left ~f:combine ~init:empty_bag)
     in
     let powers = List.map ~f:power_of_bag required_bags in
-    List.fold_left ~f:Int.add ~init:0 powers
+    Util.sum powers
 
   let%test "sample data" = Test.(run int (solve sample) ~expect:2286)
 end

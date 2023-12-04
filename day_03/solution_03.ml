@@ -67,7 +67,7 @@ module Part_1 = struct
       List.filter ~f:(has_a_neighbour symbol_coordinates) numbers
       |> numbers_from_groups
     in
-    List.fold_left ~f:Int.add ~init:0 valid_numbers
+    Util.sum valid_numbers
 
   let%test "sample data" = Test.(run int (solve sample) ~expect:4361)
 end
@@ -91,8 +91,7 @@ module Part_2 = struct
       (* We need to remove the empty lists to avoid adding 1 for each empty list to the sum*)
       |> List.filter ~f:(Fun.negate List.is_empty)
     in
-    List.map ~f:(List.fold_left ~f:Int.mul ~init:1) valid_numbers
-    |> List.fold_left ~f:Int.add ~init:0
+    List.map ~f:(List.fold_left ~f:Int.mul ~init:1) valid_numbers |> Util.sum
 
   let%test "sample data" = Test.(run int (solve sample) ~expect:467835)
 end

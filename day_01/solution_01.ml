@@ -34,8 +34,7 @@ module Part_1 = struct
           ^ String.sub s ~pos:(String.length s - 1) ~len:1)
         lines_of_digits
     in
-    List.map ~f:int_of_string first_and_last_digits
-    |> List.fold_left ~f:Int.add ~init:0
+    List.map ~f:int_of_string first_and_last_digits |> Util.sum
 
   (* According to the description the expected value should be 7 given the
      sample data. *)
@@ -118,7 +117,7 @@ module Part_2 = struct
         ~f:(fun (first, last) -> unspell first ^ unspell last)
         first_and_last_per_line
     in
-    List.map ~f:int_of_string numbers |> List.fold_left ~f:Int.add ~init:0
+    List.map ~f:int_of_string numbers |> Util.sum
 
   let%test "sample data" = Test.(run int (solve sample_2) ~expect:281)
   let%test "tricky input" = Test.(run int (solve "eighthree") ~expect:83)

@@ -15,6 +15,7 @@ depends: [
   "containers" {>= "3.12"}
   "oseq" {>= "0.5"}
   "psq" {>= "0.2.1"}
+  "re" {>= "1.11.0"}
   "ppx_deriving" {>= "5.2.1"}
   "alcotest" {with-test & >= "1.7.0"}
   "ppx_inline_alcotest" {with-test & >= "1.0.0"}
