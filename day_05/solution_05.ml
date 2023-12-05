@@ -148,8 +148,24 @@ module Part_1 = struct
 end
 
 module Part_2 = struct
-  let solve input = 0
-  let%test "sample data" = Test.(run int (solve sample) ~expect:0)
+  let solve input =
+    let open Iter.Infix in
+    let almanac =
+      Angstrom.parse_string ~consume:All parser input |> Result.get_exn
+    in
+    let seed_ranges = Array.of_list almanac.seeds in
+    let len = Array.length seed_ranges in
+    let all_seeds =
+      0 -- ((len / 2) - 1)
+      |> Iter.flat_map (fun i ->
+             let start = seed_ranges.(i * 2) in
+             let length = seed_ranges.((i * 2) + 1) in
+             start -- (start + length))
+    in
+    Iter.map (seed_to_location almanac) all_seeds
+    |> Iter.fold Int.min Int.max_int
+
+  let%test "sample data" = Test.(run int (solve sample) ~expect:46)
 end
 
 let run_1 () =
@@ -157,5 +173,6 @@ let run_1 () =
   ()
 
 let run_2 () =
-  (* Run.solve_int (module Part_2); *)
+  (* Takes about 5 minutes on a single core, but who cares... *)
+  Run.solve_int (module Part_2);
   ()
