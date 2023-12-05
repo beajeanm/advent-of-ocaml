@@ -16,10 +16,10 @@ type cards = { winning_numbers : int list; numbers_you_have : int list }
 let parser =
   let open Angstrom in
   let open Util.Parser in
-  let prefix = string "Card" <* ws <* integer <* char ':' <* ws in
-  let numbers = sep_by ws integer in
+  let prefix = string "Card" <* whitespaces <* integer <* char ':' <* whitespaces in
+  let numbers = sep_by whitespaces integer in
   let+ winning_numbers, numbers_you_have =
-    prefix *> both (numbers <* string " |" <* ws) numbers
+    prefix *> both (numbers <* string " |" <* whitespaces) numbers
   in
   { winning_numbers; numbers_you_have }
 

@@ -38,8 +38,8 @@ let rec permutations l =
 module Parser = struct
   open Angstrom
 
-  let is_ws = function ' ' | '\t' -> true | _ -> false
-  let ws = skip_while is_ws
+  let is_whitespaces = function ' ' | '\t' -> true | _ -> false
+  let whitespaces = skip_while is_whitespaces
   let is_int = function '0' .. '9' -> true | _ -> false
   let integer = take_while1 is_int >>| int_of_string
 end

@@ -1,12 +1,153 @@
 open ContainersLabels
 
-let sample = {|
-...
-|} |> String.trim
+let sample =
+  {|
+seeds: 79 14 55 13
+
+seed-to-soil map:
+50 98 2
+52 50 48
+
+soil-to-fertilizer map:
+0 15 37
+37 52 2
+39 0 15
+
+fertilizer-to-water map:
+49 53 8
+0 11 42
+42 0 7
+57 7 4
+
+water-to-light map:
+88 18 7
+18 25 70
+
+light-to-temperature map:
+45 77 23
+81 45 19
+68 64 13
+
+temperature-to-humidity map:
+0 69 1
+1 0 69
+
+humidity-to-location map:
+60 56 37
+56 93 4
+|}
+  |> String.trim
+
+module Key = struct
+  type t = Range of (int * int) | Dot of int
+  [@@deriving show { with_path = false }]
+
+  let compare a b =
+    let open Int in
+    match (a, b) with
+    | Dot d, Range (low, high) | Range (low, high), Dot d ->
+        if low <= d && d <= high then 0 else Int.compare low d
+    (* Assumption: ranges are always distinct by construction *)
+    | Range (l1, _), Range (l2, _) -> Int.compare l1 l2
+    | _ -> failwith "Unexpected"
+
+  let equal a b = Int.equal (compare a b) 0
+
+  (* I need a tree not a hash table*)
+  let hash a = 0
+end
+
+type value = { source : int; destination : int }
+[@@deriving show { with_path = false }]
+
+let to_key_value (destination, source, length) =
+  (Key.Range (source, source + length - 1), { source; destination })
+
+module KeyMap = Hashtbl.Make (Key)
+
+type almanac = {
+  seeds : int list;
+  seed_soil : value KeyMap.t;
+  soil_fertilizer : value KeyMap.t;
+  fertilizer_water : value KeyMap.t;
+  water_light : value KeyMap.t;
+  light_temperature : value KeyMap.t;
+  temperature_humidity : value KeyMap.t;
+  humidity_location : value KeyMap.t;
+}
+
+let parser =
+  let open Angstrom in
+  let open Angstrom.Let_syntax in
+  let open Util.Parser in
+  let mappings =
+    let mapping_line =
+      both (integer <* whitespaces) (both (integer <* whitespaces) integer)
+      >>| fun (a, (b, c)) -> (a, b, c)
+    in
+    let* _mapping_name =
+      take_while (Fun.negate @@ Char.equal ':') <* char ':' <* end_of_line
+    in
+    let+ lines = sep_by end_of_line mapping_line <* skip_many end_of_line in
+    let key_values = Seq.of_list lines |> Seq.map to_key_value in
+    let map = KeyMap.create 1000 in
+    KeyMap.add_seq map key_values;
+    map
+  in
+  let* seeds =
+    string "seeds:" *> whitespaces *> sep_by whitespaces integer
+    <* skip_many end_of_line
+  in
+  let* seed_soil = mappings in
+  let* soil_fertilizer = mappings in
+  let* fertilizer_water = mappings in
+  let* water_light = mappings in
+  let* light_temperature = mappings in
+  let* temperature_humidity = mappings in
+  let+ humidity_location = mappings in
+  {
+    seeds;
+    seed_soil;
+    soil_fertilizer;
+    fertilizer_water;
+    water_light;
+    light_temperature;
+    temperature_humidity;
+    humidity_location;
+  }
+
+let get_mapping map key =
+  let open Key in
+  match key with
+  | Dot d as dot ->
+      KeyMap.find_opt map key
+      |> Option.map (fun v -> Dot (v.destination - v.source + d))
+      |> Option.get_or ~default:dot
+  | Range _ -> failwith "Range in get mapping"
+
+let seed_to_location almanac seed =
+  let mapping =
+    get_mapping almanac.seed_soil (Dot seed)
+    |> get_mapping almanac.soil_fertilizer
+    |> get_mapping almanac.fertilizer_water
+    |> get_mapping almanac.water_light
+    |> get_mapping almanac.light_temperature
+    |> get_mapping almanac.temperature_humidity
+    |> get_mapping almanac.humidity_location
+  in
+  match mapping with
+  | Dot d -> d
+  | Range _ -> failwith "Range in seed to location"
 
 module Part_1 = struct
-  let solve input = 0
-  let%test "sample data" = Test.(run int (solve sample) ~expect:0)
+  let solve input =
+    let almanac =
+      Angstrom.parse_string ~consume:All parser input |> Result.get_exn
+    in
+    let locations = List.map ~f:(seed_to_location almanac) almanac.seeds in
+    List.fold_left ~f:Int.min ~init:Int.max_int locations
+
+  let%test "sample data" = Test.(run int (solve sample) ~expect:35)
 end
 
 module Part_2 = struct
@@ -15,7 +156,7 @@ module Part_2 = struct
 end
 
 let run_1 () =
-  (* Run.solve_int (module Part_1); *)
+  Run.solve_int (module Part_1);
   ()
 
 let run_2 () =

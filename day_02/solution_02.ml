@@ -16,20 +16,20 @@ module Parser = struct
     <|> string "green" *> return `Green
 
   let die_count =
-    let* count = integer <* ws in
-    let+ die = die <* ws in
+    let* count = integer <* whitespaces in
+    let+ die = die <* whitespaces in
     match die with
     | `Blue -> Blue count
     | `Red -> Red count
     | `Green -> Green count
 
   let set =
-    let+ handfull = sep_by (char ',' *> ws) die_count in
+    let+ handfull = sep_by (char ',' *> whitespaces) die_count in
     { handfull }
 
   let game =
-    let* game_id = game_id <* ws in
-    let+ sets = sep_by (char ';' *> ws) set in
+    let* game_id = game_id <* whitespaces in
+    let+ sets = sep_by (char ';' *> whitespaces) set in
     (game_id, sets)
 end
 
