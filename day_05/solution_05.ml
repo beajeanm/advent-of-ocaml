@@ -45,16 +45,13 @@ module Key = struct
   let compare a b =
     let open Int in
     match (a, b) with
-    | Dot d, Range (low, high) | Range (low, high), Dot d ->
+    | Dot d, Range (low, high) ->
+        if low <= d && d <= high then 0 else Int.compare d low
+    | Range (low, high), Dot d ->
         if low <= d && d <= high then 0 else Int.compare low d
     (* Assumption: ranges are always distinct by construction *)
     | Range (l1, _), Range (l2, _) -> Int.compare l1 l2
     | _ -> failwith "Unexpected"
-
-  let equal a b = Int.equal (compare a b) 0
-
-  (* I need a tree not a hash table*)
-  let hash a = 0
 end
 
 type value = { source : int; destination : int }
@@ -63,17 +60,17 @@ type value = { source : int; destination : int }
 let to_key_value (destination, source, length) =
   (Key.Range (source, source + length - 1), { source; destination })
 
-module KeyMap = Hashtbl.Make (Key)
+module KeyTree = CCWBTree.Make (Key)
 
 type almanac = {
   seeds : int list;
-  seed_soil : value KeyMap.t;
-  soil_fertilizer : value KeyMap.t;
-  fertilizer_water : value KeyMap.t;
-  water_light : value KeyMap.t;
-  light_temperature : value KeyMap.t;
-  temperature_humidity : value KeyMap.t;
-  humidity_location : value KeyMap.t;
+  seed_soil : value KeyTree.t;
+  soil_fertilizer : value KeyTree.t;
+  fertilizer_water : value KeyTree.t;
+  water_light : value KeyTree.t;
+  light_temperature : value KeyTree.t;
+  temperature_humidity : value KeyTree.t;
+  humidity_location : value KeyTree.t;
 }
 
 let parser =
@@ -89,10 +86,10 @@ let parser =
       take_while (Fun.negate @@ Char.equal ':') <* char ':' <* end_of_line
     in
     let+ lines = sep_by end_of_line mapping_line <* skip_many end_of_line in
-    let key_values = Seq.of_list lines |> Seq.map to_key_value in
-    let map = KeyMap.create 1000 in
-    KeyMap.add_seq map key_values;
-    map
+    let key_values = List.map ~f:to_key_value lines in
+    List.fold_left
+      ~f:(fun m (k, v) -> KeyTree.add k v m)
+      ~init:KeyTree.empty key_values
   in
   let* seeds =
     string "seeds:" *> whitespaces *> sep_by whitespaces integer
@@ -120,7 +117,7 @@ let get_mapping map key =
   let open Key in
   match key with
   | Dot d as dot ->
-      KeyMap.find_opt map key
+      KeyTree.get key map
       |> Option.map (fun v -> Dot (v.destination - v.source + d))
       |> Option.get_or ~default:dot
   | Range _ -> failwith "Range in get mapping"

@@ -42,6 +42,8 @@
   ; A modular, clean and powerful extension of the OCaml standard library
   (containers
    (>= 3.12))
+  (containers-data
+   (>= 3.12))
   ; Simple list of suspensions, as a composable lazy iterator that behaves like a value
   (oseq
    (>= 0.5))
