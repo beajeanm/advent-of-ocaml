@@ -17,6 +17,7 @@ let remove_duplicates l =
   List.rev (List.fold_left ~f:cons_uniq ~init:[] l)
 
 let sum = List.fold_left ~f:( + ) ~init:0
+let prod = List.fold_left ~f:( * ) ~init:1
 let mean l = l |> sum |> fun n -> n / List.length l
 
 let median l =
