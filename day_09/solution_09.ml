@@ -43,8 +43,16 @@ module Part_1 = struct
 end
 
 module Part_2 = struct
-  let solve input = 0
-  let%test "sample data" = Test.(run int (solve sample) ~expect:0)
+  let solve input =
+    let parsed = parse input in
+    let gens = List.map ~f:gen_all parsed in
+    let extrapolation =
+      List.foldi ~init:0 ~f:(fun acc index arr ->
+          acc + (arr.(index) * if index mod 2 = 0 then 1 else -1))
+    in
+    List.map ~f:extrapolation gens |> Util.sum
+
+  let%test "sample data" = Test.(run int (solve sample) ~expect:2)
 end
 
 let run_1 () =
@@ -52,5 +60,5 @@ let run_1 () =
   ()
 
 let run_2 () =
-  (* Run.solve_int (module Part_2); *)
+  Run.solve_int (module Part_2);
   ()
