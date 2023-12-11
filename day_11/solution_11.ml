@@ -36,7 +36,7 @@ let expanded_universe =
 type universe = {
   empty_col : int list;
   empty_row : int list;
-  planets : (int * int) list;
+  planets : Point.t list;
 }
 
 let parse input =
@@ -46,12 +46,12 @@ let parse input =
 
 let equal_universe = Array.equal (Array.equal Char.equal)
 
-let list_planets universe =
+let find_planets universe =
   Array.foldi
-    ~f:(fun acc row_index ->
+    ~f:(fun acc x ->
       Array.foldi
-        ~f:(fun acc col_index c ->
-          if Char.equal '#' c then (row_index, col_index) :: acc else acc)
+        ~f:(fun acc y c ->
+          if Char.equal '#' c then Point.make ~x ~y :: acc else acc)
         ~init:acc)
     ~init:[] universe
 
@@ -61,7 +61,7 @@ let create_universe grid =
     0 --^ Array.length grid
     |> Seq.for_all (fun row -> Char.equal '.' grid.(row).(col))
   in
-  let planets = list_planets grid in
+  let planets = find_planets grid in
   let empty_row =
     Array.mapi ~f:(fun i row -> if is_empty_row row then Some i else None) grid
     |> Array.to_list |> List.keep_some
@@ -73,30 +73,30 @@ let create_universe grid =
   in
   { planets; empty_row; empty_col }
 
-let manhattan_distance (x1, y1) (x2, y2) = abs (x1 - x2) + abs (y1 - y2)
-
 let distance expansion_factor universe p1 p2 =
   let points_in_between a b xs =
     let lower = min a b in
     let upper = max a b in
     List.filter ~f:(fun x -> x > lower && x < upper) xs |> List.length
   in
-  let manhattan_distance = manhattan_distance p1 p2 in
-  let x1, y1 = p1 in
-  let x2, y2 = p2 in
-  let empty_cols = points_in_between y1 y2 universe.empty_col in
-  let empty_rows = points_in_between x1 x2 universe.empty_row in
+  let manhattan_distance = Point.manhattan_distance p1 p2 in
+  let empty_cols =
+    points_in_between (Point.y p1) (Point.y p2) universe.empty_col
+  in
+  let empty_rows =
+    points_in_between (Point.x p1) (Point.x p2) universe.empty_row
+  in
   manhattan_distance - empty_rows - empty_cols
   + ((empty_cols + empty_rows) * expansion_factor)
 
 let%test "correct number of planets" =
-  let planets = list_planets (parse sample) in
+  let planets = find_planets (parse sample) in
   Test.(run int (List.length planets) ~expect:9)
 
 let%test "correct coordinates for planets" =
-  let planets = list_planets (parse sample) in
+  let planets = find_planets (parse sample) in
   let has_first_planets =
-    List.mem ~eq:(fun (a, b) (c, d) -> a = c && b = d) (0, 3) planets
+    List.mem ~eq:Point.equal (Point.make ~x:0 ~y:3) planets
   in
   Test.(run bool has_first_planets ~expect:true)
 
