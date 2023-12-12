@@ -16,7 +16,9 @@ let sample2 = {|
 .....
 |} |> String.trim
 
-let safe_get grid row col =
+let safe_get grid point =
+  let row = point.Point.x in
+  let col = point.Point.y in
   if row < 0 || row >= Array.length grid then '.'
   else
     let line = grid.(row) in
@@ -27,20 +29,38 @@ let find_s grid =
   let row_count = Array.length grid in
   let col_count = Array.length grid.(0) in
   0 --^ row_count
-  |> Seq.flat_map (fun r -> 0 --^ col_count |> Seq.map (fun c -> (r, c)))
-  |> Seq.filter (fun (r, c) -> Char.equal 'S' grid.(r).(c))
+  |> Seq.flat_map (fun x ->
+         0 --^ col_count |> Seq.map (fun y -> Point.make ~x ~y))
+  |> Seq.filter (fun p -> Char.equal 'S' grid.(p.Point.x).(p.Point.y))
   |> Seq.head_exn
 
-let guess_start grid (start_row, start_col) =
-  let north = safe_get grid (start_row - 1) start_col in
-  let south = safe_get grid (start_row + 1) start_col in
-  let west = safe_get grid start_row (start_col - 1) in
-  let east = safe_get grid start_row (start_col + 1) in
-  let north_connected = List.mem ~eq:Char.equal north [ '|'; 'F'; '7' ] in
-  let south_connected = List.mem ~eq:Char.equal south [ '|'; 'L'; 'J' ] in
-  let east_connected = List.mem ~eq:Char.equal east [ '-'; 'J'; '7' ] in
-  let west_connected = List.mem ~eq:Char.equal west [ '-'; 'F'; 'L' ] in
-  match (north_connected, south_connected, east_connected, west_connected) with
+type direction = North | South | East | West [@@deriving eq, show]
+
+let connection = function
+  | '|' -> [ North; South ]
+  | 'J' -> [ North; West ]
+  | 'L' -> [ North; East ]
+  | '-' -> [ East; West ]
+  | 'F' -> [ East; South ]
+  | '7' -> [ West; South ]
+  | _ -> []
+
+let guess_start grid start =
+  let north = safe_get grid (Point.up start) in
+  let south = safe_get grid (Point.down start) in
+  let west = safe_get grid (Point.left start) in
+  let east = safe_get grid (Point.right start) in
+  let north_connection =
+    List.mem ~eq:equal_direction South (connection north)
+  in
+  let south_connection =
+    List.mem ~eq:equal_direction North (connection south)
+  in
+  let east_connection = List.mem ~eq:equal_direction West (connection east) in
+  let west_connection = List.mem ~eq:equal_direction East (connection west) in
+  match
+    (north_connection, south_connection, east_connection, west_connection)
+  with
   | true, true, false, false -> '|'
   | true, false, true, false -> 'L'
   | true, false, false, true -> 'J'
@@ -49,32 +69,32 @@ let guess_start grid (start_row, start_col) =
   | false, false, true, true -> '-'
   | _ -> failwith "Invalid!"
 
-type direction = North | South | East | West [@@deriving eq]
+let opposite = function
+  | North -> South
+  | South -> North
+  | East -> West
+  | West -> East
 
-let find_loop grid (start_row, start_col) =
-  let contains c cs = List.mem ~eq:Char.equal c cs in
-  let rec next_point current_row current_col direction acc =
-    let pipe = safe_get grid current_row current_col in
-    let p = Point.make ~x:current_row ~y:current_col in
-    if
-      (not (List.is_empty acc))
-      && current_row = start_row && current_col = start_col
-    then acc
-    else if
-      (not (equal_direction direction North)) && contains pipe [ '|'; 'J'; 'L' ]
-    then next_point (current_row - 1) current_col South (p :: acc)
-    else if
-      (not (equal_direction direction East)) && contains pipe [ '-'; 'L'; 'F' ]
-    then next_point current_row (current_col + 1) West (p :: acc)
-    else if
-      (not (equal_direction direction South)) && contains pipe [ '|'; '7'; 'F' ]
-    then next_point (current_row + 1) current_col North (p :: acc)
-    else if
-      (not (equal_direction direction West)) && contains pipe [ '-'; 'J'; '7' ]
-    then next_point current_row (current_col - 1) East (p :: acc)
-    else failwith "Invalid"
+let find_loop grid start =
+  let rec iteration current from acc =
+    let pipe = safe_get grid current in
+    let next_direction =
+      connection pipe
+      |> List.filter ~f:(Fun.negate @@ equal_direction from)
+      |> List.hd
+    in
+    let next_point =
+      match next_direction with
+      | South -> Point.down current
+      | North -> Point.up current
+      | West -> Point.left current
+      | East -> Point.right current
+    in
+    if (not (List.is_empty acc)) && Point.equal current start then acc
+    else iteration next_point (opposite next_direction) (current :: acc)
   in
-  next_point start_row start_col West []
+
+  iteration start West []
 
 let parse input =
   let rows = String.lines input |> Array.of_list in
@@ -85,7 +105,7 @@ module Part_1 = struct
     let grid = parse input in
     let start = find_s grid in
     let s_pipe = guess_start grid start in
-    grid.(fst start).(snd start) <- s_pipe;
+    grid.(start.Point.x).(start.Point.y) <- s_pipe;
     let loop = find_loop grid start in
     List.length loop / 2
 
@@ -132,10 +152,10 @@ module Part_2 = struct
       |> List.flat_map ~f:(fun i ->
              let p1 = polygons.(i) in
              let p2 = polygons.((i + 1) mod len) in
-             let lefter = min (Point.x p1) (Point.x p2) in
-             let righter = max (Point.x p1) (Point.x p2) in
-             if Point.y p1 <> Point.y p2 || Point.y p1 < Point.y dot then []
-             else if lefter < Point.x dot && righter >= Point.x dot then
+             let lefter = min p1.Point.x p2.Point.x in
+             let righter = max p1.Point.x p2.Point.x in
+             if p1.Point.y <> p2.Point.y || p1.Point.y < dot.Point.y then []
+             else if lefter < dot.Point.x && righter >= dot.Point.x then
                [ (p1, p2) ]
              else [])
     in
@@ -145,14 +165,14 @@ module Part_2 = struct
     let grid = parse input in
     let start = find_s grid in
     let s_pipe = guess_start grid start in
-    grid.(fst start).(snd start) <- s_pipe;
+    grid.(start.Point.x).(start.Point.y) <- s_pipe;
     let loop = find_loop grid start in
     let polygon =
       List.filter
         ~f:(fun p ->
           Char.(
-            grid.(Point.x p).(Point.y p) <> '|'
-            && grid.(Point.x p).(Point.y p) <> '-'))
+            grid.(p.Point.x).(p.Point.y) <> '|'
+            && grid.(p.Point.x).(p.Point.y) <> '-'))
         loop
       |> Array.of_list
     in

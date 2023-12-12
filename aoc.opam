@@ -14,7 +14,6 @@ depends: [
   "angstrom" {>= "0.15.0"}
   "containers" {>= "3.12"}
   "containers-data" {>= "3.12"}
-  "moonpool" {>= "0.5.1"}
   "oseq" {>= "0.5"}
   "psq" {>= "0.2.1"}
   "re" {>= "1.11.0"}
