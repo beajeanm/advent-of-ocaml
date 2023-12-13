@@ -50,23 +50,26 @@ let find_vertical_reflexion grid =
     let bound = min (Array.length row - left_col - 2) left_col in
     let all_match =
       0 -- bound
-      |> Seq.for_all (fun offset ->
-             Char.equal row.(left_col - offset) row.(left_col + 1 + offset))
+      |> Seq.map (fun offset ->
+             abs
+             @@ Char.compare row.(left_col - offset) row.(left_col + 1 + offset))
+      |> Seq.fold_left Int.add 0
     in
-    all_match
+    all_match = 0
   in
-  let first_row = grid.(0) in
-  (* Check all indices of the first row to find a reflexion *)
-  let first_row_reflexion =
-    0 --^ (Array.length first_row - 1) |> Seq.filter (is_reflexion first_row)
+  let all_reflexions =
+    Array.map
+      ~f:(fun row ->
+        0 --^ (Array.length row - 1)
+        |> Seq.filter (is_reflexion row)
+        |> Seq.to_list)
+      grid
+    |> Array.to_list
   in
-  (* Only keep the reflexion that is valid across all rows. *)
-  Seq.filter
-    (fun right_col ->
-      Array.for_all ~f:(fun row -> is_reflexion row right_col) grid)
-    first_row_reflexion
+  let first_row = List.hd all_reflexions in
+  List.fold_left ~f:(List.inter ~eq:Int.equal) ~init:first_row all_reflexions
   (* We assume there is only one. *)
-  |> Seq.head
+  |> List.head_opt
   (*Arrays are 0 indexed. *)
   |> Option.map (Int.add 1)
   |> Option.value ~default:0
@@ -76,25 +79,28 @@ let find_horizontal_reflexion grid =
     let bound = min (Array.length grid - up_row - 2) up_row in
     let all_match =
       0 -- bound
-      |> Seq.for_all (fun offset ->
-             Char.equal
-               grid.(up_row - offset).(col_index)
-               grid.(up_row + 1 + offset).(col_index))
+      |> Seq.map (fun offset ->
+             abs
+             @@ Char.compare
+                  grid.(up_row - offset).(col_index)
+                  grid.(up_row + 1 + offset).(col_index))
+      |> Seq.fold_left Int.add 0
     in
-    all_match
+    all_match = 0
   in
-  (* Check all indices of the first row to find a reflexion *)
-  let first_col_reflexion =
-    0 --^ (Array.length grid - 1) |> Seq.filter (is_reflexion 0)
+  let all_reflexions =
+    0 --^ Array.length grid.(0)
+    |> Seq.map (fun col ->
+           0 --^ (Array.length grid - 1)
+           |> Seq.filter (is_reflexion col)
+           |> Seq.to_list)
+    |> Seq.to_list
   in
-  (* Only keep the reflexion that is valid across all rows. *)
-  Seq.filter
-    (fun up_row ->
-      0 --^ Array.length grid.(0)
-      |> Seq.for_all (fun col -> is_reflexion col up_row))
-    first_col_reflexion
+  let first_col = List.hd all_reflexions in
+  List.fold_left ~f:(List.inter ~eq:Int.equal) ~init:first_col all_reflexions
   (* We assume there is only one. *)
-  |> Seq.head (*Arrays are 0 indexed. *)
+  |> List.head_opt
+  (*Arrays are 0 indexed. *)
   |> Option.map (Int.add 1)
   |> Option.map (Int.mul 100)
   |> Option.value ~default:0
