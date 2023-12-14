@@ -124,27 +124,37 @@ let spin platform =
   migrate_north platform |> migrate_west |> migrate_south |> migrate_east
 
 module PlatformMap = Hashtbl.Make (Platform)
+module IntMap = Hashtbl.Make (Int)
 
+(* If we consider the various platform as edges in a graph an spinning create the verices.
+   Then if we find a cycle, we do not need to spin further. All further transition will just repeat one of the node of
+   our graph.
+   If s0 is the initial platform and sA the first node of the cycle of lenth c,
+   then for any node sN with N >= A is equal to S(N-A mod c + A)
+*)
 let spin' spins platform =
-  (* Save us from infinite loops *)
   let max_iteration = 200 in
   let cache = PlatformMap.create max_iteration in
+  let inverted_cache = IntMap.create max_iteration in
   let rec aux iteration platform =
+    (* Save us from infinite loops *)
     if iteration = max_iteration then failwith "Not cycle found"
     else
       let platform = spin platform in
-      let prev = PlatformMap.find_opt cache platform in
-      if Option.is_some prev then
-        let prev = Option.get_exn_or "" prev in
-        (prev, iteration - prev)
-      else (
-        PlatformMap.add cache platform iteration;
-        aux (iteration + 1) platform)
+      PlatformMap.find_opt cache platform
+      |> Option.map_lazy
+           (* A brand new platform, add it to the cache and keep going *)
+             (fun () ->
+             PlatformMap.add cache platform iteration;
+             IntMap.add inverted_cache iteration platform;
+             aux (iteration + 1) platform)
+           (* We've seen thit one before, this is the first node of the cycle *)
+             (fun prev -> (prev, iteration - prev))
   in
   PlatformMap.add cache platform 0;
+  IntMap.add inverted_cache 0 platform;
   let start_cyle, cycle_len = aux 1 platform in
-  0 --^ (((spins - start_cyle) mod cycle_len) + start_cyle)
-  |> Seq.fold_left (fun p _ -> spin p) platform
+  IntMap.find inverted_cache (((spins - start_cyle) mod cycle_len) + start_cyle)
 
 module Part_1 = struct
   let solve input =
