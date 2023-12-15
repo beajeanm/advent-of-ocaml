@@ -80,12 +80,8 @@ let distance expansion_factor universe p1 p2 =
     List.filter ~f:(fun x -> x > lower && x < upper) xs |> List.length
   in
   let manhattan_distance = Point.manhattan_distance p1 p2 in
-  let empty_cols =
-    points_in_between (Point.y p1) (Point.y p2) universe.empty_col
-  in
-  let empty_rows =
-    points_in_between (Point.x p1) (Point.x p2) universe.empty_row
-  in
+  let empty_cols = points_in_between p1.Point.y p2.Point.y universe.empty_col in
+  let empty_rows = points_in_between p1.Point.x p2.Point.x universe.empty_row in
   manhattan_distance - empty_rows - empty_cols
   + ((empty_cols + empty_rows) * expansion_factor)
 
