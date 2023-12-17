@@ -6,3 +6,4 @@ let up p = { p with x = p.x - 1 }
 let right p = { p with y = p.y + 1 }
 let left p = { p with y = p.y - 1 }
 let data g p = g.(p.x).(p.y)
+let hash t = (CCHash.pair CCHash.int CCHash.int) (t.x, t.y)
