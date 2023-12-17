@@ -44,6 +44,7 @@
    (>= 3.12))
   (containers-data
    (>= 3.12))
+  (iter (>= 1.8))
   ; Simple list of suspensions, as a composable lazy iterator that behaves like a value
   (oseq
    (>= 0.5))
