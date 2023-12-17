@@ -7,3 +7,4 @@ let right p = { p with y = p.y + 1 }
 let left p = { p with y = p.y - 1 }
 let data g p = g.(p.x).(p.y)
 let hash t = (CCHash.pair CCHash.int CCHash.int) (t.x, t.y)
+let show t = Format.sprintf "(%i, %i)" t.x t.y
