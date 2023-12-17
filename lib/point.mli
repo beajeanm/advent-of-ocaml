@@ -7,3 +7,4 @@ val down : t -> t
 val up : t -> t
 val right : t -> t
 val left : t -> t
+val data : 'a array array -> t -> 'a
