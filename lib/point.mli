@@ -8,4 +8,5 @@ val up : t -> t
 val right : t -> t
 val left : t -> t
 val data : 'a array array -> t -> 'a
+val safe_get : 'a array array -> t -> 'a option
 val hash : t -> int
