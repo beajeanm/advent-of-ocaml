@@ -22,12 +22,21 @@ hdj{m>838:A,pv}
 |}
   |> String.trim
 
-type op = GT | LT
+type op = GT | LT [@@deriving show { with_path = false }]
+
 type action = Rejected | Accepted | Workflow of string
+[@@deriving show { with_path = false }]
+
 type category = Extremely_cool | Musical | Aerodynamic | Shiny
+[@@deriving show { with_path = false }]
+
 type rule = Next of category * op * int * action | Terminate of action
-type workflow = string * rule list
+[@@deriving show { with_path = false }]
+
+type workflow = string * rule list [@@deriving show { with_path = false }]
+
 type rating = { cool : int; musical : int; aero : int; shiny : int }
+[@@deriving show { with_path = false }]
 
 let sum_rating { cool; musical; aero; shiny } = cool + musical + aero + shiny
 
@@ -91,7 +100,7 @@ let parse input =
   in
   (workflows, ratings)
 
-let is_accepted (workflows : (string * rule list) list) rating =
+let is_accepted workflows rating =
   let get_rating = function
     | Extremely_cool -> rating.cool
     | Musical -> rating.musical
@@ -120,6 +129,104 @@ let is_accepted (workflows : (string * rule list) list) rating =
   in
   find_last_action (Workflow "in")
 
+type rating_range = {
+  cool_range : int * int;
+  musical_range : int * int;
+  aero_range : int * int;
+  shiny_range : int * int;
+}
+[@@deriving show { with_path = false }]
+
+let generate_ranges workflows =
+  (* Get the rating range for the given category *)
+  let get_rating_range range = function
+    | Extremely_cool -> range.cool_range
+    | Musical -> range.musical_range
+    | Aerodynamic -> range.aero_range
+    | Shiny -> range.shiny_range
+  in
+  (* Update the range of the given category *)
+  let update_range range low high = function
+    | Extremely_cool -> { range with cool_range = (low, high) }
+    | Musical -> { range with musical_range = (low, high) }
+    | Aerodynamic -> { range with aero_range = (low, high) }
+    | Shiny -> { range with shiny_range = (low, high) }
+  in
+  (* Easier to eliminate wrong range here rather than have messy coditions above. *)
+  let sage_update_range range low high category =
+    if low > high then None else Some (update_range range low high category)
+  in
+  (*
+     Split the given range in 2.
+     Given a range [a, b] and a rule '< l' with l between a and b, then the new
+     ranges are Some [a, l-1] and Some [l, b].
+     if l is greater than b then Some [a, b], None
+     if l is less than a then None, Some [a, b]
+     The rules are mirrored for '> l'
+  *)
+  let split range category op limit =
+    let low, high = get_rating_range range category in
+    match op with
+    | GT ->
+        let upped_range_limit = max (limit + 1) low in
+        ( sage_update_range range upped_range_limit high category,
+          sage_update_range range low (upped_range_limit - 1) category )
+    | LT ->
+        let lower_range_limit = min (limit - 1) high in
+        ( sage_update_range range low lower_range_limit category,
+          sage_update_range range (lower_range_limit + 1) high category )
+  in
+  (* what to do with a range given an action. *)
+  let rec range_for_action range = function
+    (* We reject the whole range (e.g. 0 combination) *)
+    | Rejected -> []
+    (* Accept the range as provided. *)
+    | Accepted -> [ range ]
+    (* For workflow, we need to process each rule in order.
+       The condition of a rule split the current range between a A range that
+       satisfies the condition and it's complement B.
+       Range A is further refined by processing the action associated with the rule.
+       Range B is used as the starting range for the next rule in the worflow list.
+       The valid range for this workflow is the concatenation of all the ranges obtained
+       by process its rules with the process above.
+    *)
+    | Workflow name ->
+        let rules = List.assoc ~eq:String.equal name workflows in
+        process_rules range rules
+  and process_rules range rules =
+    match rules with
+    | Terminate workflow :: [] -> range_for_action range workflow
+    | Next (category, op, limit, action) :: tl ->
+        let (updated_range, complement) :
+            rating_range option * rating_range option =
+          split range category op limit
+        in
+        let first_part =
+          Option.map (fun r -> range_for_action r action) updated_range
+          |> Option.value ~default:[]
+        in
+        let second_part =
+          Option.map (fun r -> process_rules r tl) complement
+          |> Option.value ~default:[]
+        in
+        List.concat [ first_part; second_part ]
+        (* We shouldn't reach this unless parsing is wrong. *)
+    | _ -> failwith (Format.sprintf "Process rules: %a" (List.pp pp_rule) rules)
+  in
+  let start =
+    {
+      cool_range = (1, 4000);
+      musical_range = (1, 4000);
+      aero_range = (1, 4000);
+      shiny_range = (1, 4000);
+    }
+  in
+  range_for_action start (Workflow "in")
+
+let count_combinations { cool_range; musical_range; aero_range; shiny_range } =
+  let nb (low, high) = high - low + 1 in
+  nb cool_range * nb musical_range * nb aero_range * nb shiny_range
+
 module Part_1 = struct
   let solve input =
     let workflows, ratings = parse input in
@@ -130,8 +237,12 @@ module Part_1 = struct
 end
 
 module Part_2 = struct
-  let solve input = 0
-  let%test "sample data" = Test.(run int (solve sample) ~expect:0)
+  let solve input =
+    let workflows, _ = parse input in
+    let ranges = generate_ranges workflows in
+    List.map ~f:count_combinations ranges |> Util.sum
+
+  let%test "sample data" = Test.(run int (solve sample) ~expect:167409079868000)
 end
 
 let run_1 () =
@@ -139,5 +250,5 @@ let run_1 () =
   ()
 
 let run_2 () =
-  (* Run.solve_int (module Part_2); *)
+  Run.solve_int (module Part_2);
   ()
