@@ -23,7 +23,7 @@ U 2 (#7a21e3)
 type direction = Right | Left | Up | Down
 type instruction = direction * int
 
-let parser input =
+let part_1_parser input =
   let parse_direction = function
     | "R" -> Right
     | "L" -> Left
@@ -33,8 +33,27 @@ let parser input =
   in
 
   let parse_row row =
-    let groups = String.split_on_char ~by:' ' row in
-    (parse_direction (List.nth groups 0), int_of_string (List.nth groups 1))
+    let instruction, distance, _ =
+      Scanf.sscanf row "%s %i (#%s@)" (fun a b c -> (a, b, c))
+    in
+    (parse_direction instruction, distance)
+  in
+  String.lines input |> List.map ~f:parse_row
+
+let part_2_parser input =
+  let parse_direction = function
+    | '0' -> Right
+    | '1' -> Down
+    | '2' -> Left
+    | '3' -> Up
+    | _ -> failwith "parse_direction"
+  in
+  let parse_distance hex =
+    int_of_string (String.concat ~sep:"" [ "0x"; String.sub ~pos:0 ~len:5 hex ])
+  in
+  let parse_row row =
+    let _, _, hex = Scanf.sscanf row "%s %i (#%s@)" (fun a b c -> (a, b, c)) in
+    (parse_direction (String.get hex 5), parse_distance hex)
   in
   String.lines input |> List.map ~f:parse_row
 
@@ -79,14 +98,17 @@ let surface instructions =
 
 module Part_1 = struct
   let solve input =
-    let instructions = parser input in
+    let instructions = part_1_parser input in
     surface instructions
 
   let%test "sample data" = Test.(run int (solve sample) ~expect:62)
 end
 
 module Part_2 = struct
-  let solve input = 0
+  let solve input =
+    let instructions = part_2_parser input in
+    surface instructions
+
   let%test "sample data" = Test.(run int (solve sample) ~expect:952408144115)
 end
 
@@ -94,4 +116,6 @@ let run_1 () =
   Run.solve_int (module Part_1);
   ()
 
-let run_2 () = (* Run.solve_int (module Part_2); *) ()
+let run_2 () =
+  Run.solve_int (module Part_2);
+  ()
