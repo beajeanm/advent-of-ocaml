@@ -11,25 +11,28 @@ let sample =
 |}
   |> String.trim
 
-let count0 count (row, counts) =
+let count recurse (row, counts) =
   let contains = List.mem ~eq:Char.equal in
+  let maybe_operational c = Char.(equal '.' c || equal '?' c) in
+  let maybe_broken c = Char.(equal '#' c || equal '?' c) in
   if List.is_empty row then if List.is_empty counts then 1 else 0
   else if List.is_empty counts then if contains '#' row then 0 else 1
   else
     let first_char = List.hd row in
     let current_count = List.hd counts in
     let good_count =
-      if Char.(equal '.' first_char || equal '?' first_char) then
-        count (List.tl row, counts)
-      else 0
+      if maybe_operational first_char then recurse (List.tl row, counts) else 0
     in
     let broken_count =
-      if Char.(equal '#' first_char || equal '?' first_char) then
+      if maybe_broken first_char then
         if
+          (* Enough pipes to match the current group? *)
           List.length row > current_count
+          (* An operational pipe in the next group? *)
           && (not (List.take current_count row |> contains '.'))
-          && contains (List.nth row current_count) [ '.'; '?' ]
-        then count (List.drop (current_count + 1) row, List.tl counts)
+          (* After the current group we need an operational pipe. *)
+          && maybe_operational (List.nth row current_count)
+        then recurse (List.drop (current_count + 1) row, List.tl counts)
         else 0
       else 0
     in
@@ -43,31 +46,27 @@ end
 
 module KeyMap = Hashtbl.Make (Key)
 
-let cached_count row counts =
+let count' row counts =
   (* Add an operational spring at the end to simplify some edge cases. *)
   let row = List.concat [ row; [ '.' ] ] in
   let cache = CCCache.unbounded ~eq:Key.equal ~hash:Key.hash 10000 in
-  CCCache.with_cache_rec cache count0 (row, counts)
+  CCCache.with_cache_rec cache count (row, counts)
 
 let%test "Count broken groups" =
-  Test.(
-    run int (cached_count ("#.#.###." |> String.to_list) [ 1; 1; 3 ]) ~expect:1)
+  Test.(run int (count' ("#.#.###." |> String.to_list) [ 1; 1; 3 ]) ~expect:1)
 
 let%test "Count broken groups 2" =
   Test.(
     run int
-      (cached_count ("#....######..#####." |> String.to_list) [ 1; 6; 5 ])
+      (count' ("#....######..#####." |> String.to_list) [ 1; 6; 5 ])
       ~expect:1)
 
 let%test "counting arrangements 1" =
-  Test.(
-    run int (cached_count ("???.###." |> String.to_list) [ 1; 1; 3 ]) ~expect:1)
+  Test.(run int (count' ("???.###." |> String.to_list) [ 1; 1; 3 ]) ~expect:1)
 
 let%test "counting arrangements 3" =
   Test.(
-    run int
-      (cached_count ("?###????????." |> String.to_list) [ 3; 2; 1 ])
-      ~expect:10)
+    run int (count' ("?###????????." |> String.to_list) [ 3; 2; 1 ]) ~expect:10)
 
 let parse input =
   let parse_row row =
@@ -82,9 +81,7 @@ let parse input =
 module Part_1 = struct
   let solve input =
     let parsed = parse input in
-    List.map
-      ~f:(fun (row, counts) -> cached_count (String.to_list row) counts)
-      parsed
+    List.map ~f:(fun (row, counts) -> count' (String.to_list row) counts) parsed
     |> Util.sum
 
   let%test "sample data" = Test.(run int (solve sample) ~expect:21)
@@ -97,9 +94,7 @@ module Part_2 = struct
         List.concat [ counts; counts; counts; counts; counts ] )
     in
     let parsed = parse input |> List.map ~f:unfold in
-    List.map
-      ~f:(fun (row, counts) -> cached_count (String.to_list row) counts)
-      parsed
+    List.map ~f:(fun (row, counts) -> count' (String.to_list row) counts) parsed
     |> Util.sum
 
   let%test "sample data" = Test.(run int (solve sample) ~expect:525152)
