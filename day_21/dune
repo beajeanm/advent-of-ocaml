@@ -1,7 +1,7 @@
 (library
  (name solution_21)
  (modules solution_21)
- (libraries aoc angstrom containers oseq)
+ (libraries aoc angstrom containers grid)
  (inline_tests)
  (preprocess
   (pps
